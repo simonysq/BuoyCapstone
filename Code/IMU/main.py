@@ -1,3 +1,5 @@
+#main.py - not exactly sure what this file is about but it seems to be code that initializes the BNO055 and gives position updates to Pi. 
+
 import logging
 import sys
 import time

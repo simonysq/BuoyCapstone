@@ -1,20 +1,14 @@
-#Main program for our Capstone Project
-#Sponsor: Penn State ARL 1
-#Project Title: UUV Mast, Fall 2019
-#Class: EE403W Section 2
-#Professor: Mark Bregar
 
-#Overview
-#The goal here is to create an algorithm that turn on the appropriate thrusters
-#when our cylinder moves from the original location.
+#Algorithm.py includes an algorithm that turn on the appropriate thrusters
+#to return the UUV to its original location when it moves off course. 
 
 import time
-import board
-import busio
-import adafruit_gps
-import serial
+#import board
+#import busio
+#import adafruit_gps
+#import serial
 import math
-import RPi.GPIO as IO
+#import RPi.GPIO as IO
 
 ##########################
 #VARIABLES

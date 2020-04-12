@@ -1,3 +1,6 @@
+#test_capstone.py uses the raspberry pi to test the logic of the Algorithm.py file by running many test cases. 
+#The results will be shown through the frequency of blinking in the raspberry pi's LED's
+
 import Algorithm.Algorithm as cap
 import math
 import RPi.GPIO as IO

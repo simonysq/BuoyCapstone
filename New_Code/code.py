@@ -20,11 +20,12 @@ import random
 ############## For Classes ONLY ###############
 
 class Buoy:
-    def __init__(self, lat_coord, long_coord, lat_speed, long_speed):
+    def __init__(self, lat_coord, long_coord, lat_speed, long_speed, orientation):
         self.lat_coord = lat_coord
         self.long_coord = long_coord
         self.lat_speed = lat_speed
         self.long_speed = long_speed
+        self.orientation = orientation
 
     def set_lat_coord(self, coord):
         self.lat_coord += coord
@@ -49,6 +50,12 @@ class Buoy:
 
     def get_long_speed(self):
         return self.long_speed
+
+    def set_orientation(self, rotateAngle):
+    	self.orientation = (self.orientation + rotateAngle) % 360 
+
+    def get_orientation(self):
+    	return self.orientation
 
 # Sets up a class responsible for controlling each individual thruster's speed
 class Thruster:
@@ -75,7 +82,7 @@ NEUTRAL             = 0
 MAX_BACKWARD_SPEED  = -4
 
 # Splits up the 4 thrusters' adjustment speeds into 2 sets: LONG (NS) and LAT (WE)
-# ADJUSTMENT is added to NEUTRAL, which is what causes the thrusters to spin either foward or backwards
+# ADJUSTMENT is added to NEUTRAL, which is what causes the thrusters to spin either forward or backwards
 long_adjustment     = 0
 lat_adjustment      = 0
 
@@ -103,7 +110,7 @@ lat_old = 0
 ##############################################
 ################## Objects ###################
 
-# Sets up the four thrusters into instances
+# Sets up the four thrusters into instances: thrusters are all off. 
 NORTH = Thruster("NORTH", NEUTRAL)
 SOUTH = Thruster("SOUTH", NEUTRAL)
 EAST = Thruster("EAST", NEUTRAL)
@@ -142,12 +149,16 @@ LONG = random_change(5)
 wave_lat_current    = random_change(33)
 wave_long_current   = random_change(33)
 
+# Orientation: attach sensor at front of UUV (eg. north thruster), select random angle from 0 to 360 degrees
+# to be oriented front of UUV must face north, (90 degrees out of 360 degrees)
+ORIENT = random.randrange(360)
+
 # UUV speed
 UUV_long_speed      = 0
 UUV_lat_speed       = 0
 
 # Initializes the Buoy object
-UUV = Buoy(LAT, LONG, wave_lat_current, wave_long_current)
+UUV = Buoy(LAT, LONG, wave_lat_current, wave_long_current, ORIENT)
 
 ##############################################
 ########## Functions and Main Loop ###########
@@ -174,6 +185,11 @@ def gps_update():
     LONG = random_change(5)
     LAT = random_change(5)
     return
+
+# Remove for hardware intergration, since there will be some compass/imu present for orientation. 
+def orientation_update():
+	global ORIENT
+	ORIENT = random.randrange(360)
 
 # Stops the thrusters given by the array PINS
 def stop_thrusters(PINS):
@@ -241,6 +257,13 @@ def adjust_speed(PINS, t, scale, coord, speed):
     else:
         return [t, scale, adjustment]
 
+#for thruster to orient the UUV, plug return value into adjust speeds to adjust north thruster speed to 0.23 (about 5 degree/iteration) 
+def rotateForwOrBack(PIN, angle): 
+	if angle < 90 or angle > 270:
+		run_thrusters(PIN, 0.23)
+	else:
+		run_thrusters(PIN, -0.23)
+
 def coord_sign(coord):
     if coord >= 0:
         return 1
@@ -258,19 +281,24 @@ def main():
     # Updates current position
     gps_update()
 
+    # Update Orientation. 
+    orientation_update()
+
     # Compares change from HOME location [0, 0]
     lat_sign_int = coord_sign(LAT)
     long_sign_int = coord_sign(LONG)
 
+    #update the UUV values, notice that UUV is moving at speed of currents. 
     UUV.set_lat_coord(LAT)
     UUV.set_long_coord(LONG)
     UUV.set_lat_speed(wave_lat_current)
     UUV.set_long_speed(wave_long_current)
+    UUV.set_orientation(ORIENT)
 
     # Main Loop
     while(1):
         global adjustment_time, lat_adjustment, long_adjustment, lat_adjust_time, long_adjust_time
-        global lat_scale, long_scale, long_sign_current, lat_sign_current
+        global lat_scale, long_scale, orientation_scale, long_sign_current, lat_sign_current
 
         last_runtime = time.monotonic()
         try:
@@ -284,13 +312,21 @@ def main():
             time.sleep(1 - (current_time - last_runtime))
             wait = time.monotonic() - last_runtime
 
+            #set current speed and location of UUV
             UUV.set_long_speed(NORTH.get_speed() - wave_long_current)
             UUV.set_lat_speed(WEST.get_speed() - wave_lat_current)
             UUV.set_long_coord(UUV.get_long_speed() * wait)
             UUV.set_lat_coord(UUV.get_lat_speed() * wait)
 
-            print("{0:12s}{1:>5f}\n{2:12s}{3:>5f}\n".format("Lat Post:", UUV.get_lat_coord(),
-                                                          "Long Post:", UUV.get_long_coord()))
+            #set new orientation of UUV:
+            # w = v / r: v is in m/s, r = 5 cm so 0.05m 
+            omega = NORTH.get_speed() / 0.05 
+            # angle change = omega * change in time:
+            changeAngle = omega * wait
+            UUV.set_orientation(changeAngle)
+
+            print("{0:14s}{1:>5f}\n{2:14s}{3:>5f}\n{4:14s}{5:>5f}\n".format("Lat Post:", UUV.get_lat_coord(),
+                                                          "Long Post:", UUV.get_long_coord(), "Orientation:", UUV.get_orientation()))
 
             #print(wave_lat_current, wave_long_current)
 
@@ -309,44 +345,55 @@ def main():
                 print(long_change)
                 print(lat_change)'''
 
-            # Responsible for LONG
-            # Currently barebones
-            if tolerance(UUV.get_long_coord()):
-                if long_adjust_time == 0:
-                    long_adjust_time = time.monotonic()
+            #Before moving, must ensure orientation of UUV is correct: approximate 90 degrees (+- 3 degrees)
+            tempOrientation = UUV.get_orientation()
+            if tempOrientation > 93 or tempOrientation < 87:
+            	rotateForwOrBack([NORTH], tempOrientation)
 
-                change = adjust_speed([NORTH, SOUTH], long_adjust_time, long_scale, UUV.get_long_coord(), UUV.get_long_speed())
-
-                long_adjust_time    = change[0]
-                long_scale          = change[1]
-                long_adjustment     = change[2]
-
-                if not(long_sign_int == long_sign_current):
-                    long_sign_int = coord_sign(UUV.get_long_coord())
-                    long_scale -= 1
-
+            #only if orientation is correct, then perform other actions. 
             else:
-                stop_thrusters([NORTH, SOUTH])
+            	#stop the north thruster as orientation is correct. 
+            	stop_thrusters([NORTH])
 
-            # Responsible for LAT
-            # Currently barebones
-            if tolerance(UUV.get_lat_coord()):
-                if lat_adjust_time == 0:
-                    lat_adjust_time = time.monotonic()
+            	'''
+	            # Responsible for LONG
+	            # Currently barebones
+	            if tolerance(UUV.get_long_coord()):
+	                if long_adjust_time == 0:
+	                    long_adjust_time = time.monotonic()
 
-                change = adjust_speed([WEST, EAST], lat_adjust_time, lat_scale, UUV.get_lat_coord(), UUV.get_lat_speed())
+	                change = adjust_speed([NORTH, SOUTH], long_adjust_time, long_scale, UUV.get_long_coord(), UUV.get_long_speed())
 
-                lat_adjust_time     = change[0]
-                lat_scale           = change[1]
-                lat_adjustment      = change[2]
+	                long_adjust_time    = change[0]
+	                long_scale          = change[1]
+	                long_adjustment     = change[2]
 
-                if not(lat_sign_int == lat_sign_current):
-                    lat_sign_int = coord_sign(UUV.get_lat_coord())
-                    lat_scale -= 1
+	                if not(long_sign_int == long_sign_current):
+	                    long_sign_int = coord_sign(UUV.get_long_coord())
+	                    long_scale -= 1
 
-            else:
-                stop_thrusters([WEST, EAST])
+	            else:
+	                stop_thrusters([NORTH, SOUTH])
 
+	            # Responsible for LAT
+	            # Currently barebones
+	            if tolerance(UUV.get_lat_coord()):
+	                if lat_adjust_time == 0:
+	                    lat_adjust_time = time.monotonic()
+
+	                change = adjust_speed([WEST, EAST], lat_adjust_time, lat_scale, UUV.get_lat_coord(), UUV.get_lat_speed())
+
+	                lat_adjust_time     = change[0]
+	                lat_scale           = change[1]
+	                lat_adjustment      = change[2]
+
+	                if not(lat_sign_int == lat_sign_current):
+	                    lat_sign_int = coord_sign(UUV.get_lat_coord())
+	                    lat_scale -= 1
+
+	            else:
+	                stop_thrusters([WEST, EAST])
+				'''
         except KeyboardInterrupt:
             # Press CTRL+C to activate. Updates GPS position
             gps_update()
