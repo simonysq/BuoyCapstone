@@ -6,7 +6,7 @@ simulate the UUV moving back to [0, 0].
 As of current, the UUV is able to adjust its speed. Need to implement either functions or variables that will
 keep track of the UUV's current position relative to its HOME coordinates.
 EX:
-LONGTITUDE:
+LONGITUDE:
 0 = x +- current_speed * time
 '''
 
@@ -17,51 +17,116 @@ import time
 
 ###############################################
 ################## GUI ONLY ###################
-a = "ON"
-b = "1500us"
+# Change graph size
+size = 100
+zoom_scale = 20
 
-tab1_layout = [[sg.Graph(canvas_size=(400,400), graph_bottom_left=(-105,-105), graph_top_right=(105,105),
+default_a = "ON"
+default_b = "1500us"
+
+# Draws the axis lines for key with scale
+def graph_lines(key, scale, tick, tick_size):
+    scaled = int(size / scale)
+
+    key.DrawLine((-size, 0), (size, 0))
+    key.DrawLine((0, -size), (0, size))
+
+    for x in range(-scaled, scaled + 1, tick):
+        key.DrawLine((x, -tick_size), (x, tick_size))
+        if x != 0:
+            key.DrawText(x, (x, -tick), color="green")
+
+    for y in range(-scaled, scaled + 1, tick):
+        key.DrawLine((-tick_size, y), (tick_size, y))
+        if y != 0:
+            key.DrawText(y, (-tick, y), color="blue")
+
+
+tab1_layout = [[sg.Graph(canvas_size=(400,400), graph_bottom_left=(-(size+5), -(size+5)),
+                         graph_top_right=((size+5), (size+5)),
                     background_color="white", key="graph", tooltip="This is represents where the UUV is"
                                                                    " relative to its home position (0,0)")]]
-tab2_layout = [
-    [sg.Text("Thruster North", pad=((5,30), (2,2)), justification="left"), sg.In("{} at {}".format(a, b),
-        enable_events=False, disabled=True, key="M1"+sg.WRITE_ONLY_KEY, size=(20,2),pad=((3,25), (0,0)),
+
+tab2_layout = [[sg.Graph(canvas_size=(400,400), graph_bottom_left=(-(size/zoom_scale+1), -(size/zoom_scale+1)),
+                         graph_top_right=((size/zoom_scale+1), (size/zoom_scale+1)),
+                    background_color="white", key="zoom_graph", tooltip="This is represents where the UUV is"
+                                                                   " relative to its home position (0,0)")]]
+tab3_layout = [
+    [sg.Text("Thruster North", pad=((5,30), (2,2)), justification="left"), sg.In("{} at {}".format(default_a, default_b),
+        enable_events=False, disabled=True, key="M1", size=(20,2),pad=((3,25), (0,0)),
         tooltip="This shows the states of the thrusters")],
 
-    [sg.Text("Thruster South", pad=((5,30), (0,0)), justification="left"), sg.In("{} at {}".format(a, b),
-        enable_events=False, disabled=True, key="M2"+sg.WRITE_ONLY_KEY, size=(20,2),pad=((0,25), (2,2)),
+    [sg.Text("Thruster South", pad=((5,30), (0,0)), justification="left"), sg.In("{} at {}".format(default_a, default_b),
+        enable_events=False, disabled=True, key="M2", size=(20,2), pad=((0,25), (2,2)),
         tooltip="This shows the states of the thrusters")],
 
-    [sg.Text("Thruster West", pad=((5,30), (0,0)), justification="left"), sg.In("{} at {}".format(a, b),
-        enable_events=False, disabled=True, key="M3"+sg.WRITE_ONLY_KEY, size=(20,2),pad=((3,25), (2,2)),
+    [sg.Text("Thruster West", pad=((5,30), (0,0)), justification="left"), sg.In("{} at {}".format(default_a, default_b),
+        enable_events=False, disabled=True, key="M3", size=(20,2), pad=((3,25), (2,2)),
         tooltip="This shows the states of the thrusters")],
 
-    [sg.Text("Thruster East", pad=((5,30), (0,0)), justification="left"), sg.In("{} at {}".format(a, b),
-        enable_events=False, disabled=True, key="M4"+sg.WRITE_ONLY_KEY, size=(20,2),pad=((7,25), (2,2)),
-        tooltip="This shows the states of the thrusters")]
+    [sg.Text("Thruster East", pad=((5,30), (0,0)), justification="left"), sg.In("{} at {}".format(default_a, default_b),
+        enable_events=False, disabled=True, key="M4", size=(20,2), pad=((7,25), (2,2)),
+        tooltip="This shows the states of the thrusters")],
+
+    [sg.Text("Orientation", pad=((5, 30), (0, 0)), justification="left"), sg.In("{}°".format("0"),
+        enable_events=False, disabled=True, key="M6", size=(20, 2), pad=((21, 25), (2, 2)),
+        tooltip="This shows the orientation of the UUV")],
+    [sg.Text("_"*80, pad=((0,0),(0,0)))],
+
+    [sg.Text("UUV Speed - Latitude", pad=((5, 30), (0, 0)), justification="left"),
+     sg.In("{}".format(0),
+           enable_events=False, disabled=True, key="M9", size=(20, 2), pad=((39, 25), (2, 2)),
+           tooltip="Latitude Speed")],
+
+    [sg.Text("UUV Speed - Longtitude", pad=((5, 30), (0, 0)), justification="left"),
+     sg.In("{}".format(0),
+           enable_events=False, disabled=True, key="M10", size=(20, 2), pad=((25, 25), (2, 2)),
+           tooltip="Longitude Speed")],
+
+    [sg.Text("UUV Coordinate - Latitude", pad=((5, 30), (0, 0)), justification="left"),
+     sg.In("{}".format(0),
+           enable_events=False, disabled=True, key="M11", size=(20, 2), pad=((14, 25), (2, 2)),
+           tooltip="Latitude")],
+
+    [sg.Text("UUV Coordinate - Longtitude", pad=((5, 30), (0, 0)), justification="left"),
+     sg.In("{}".format(0),
+           enable_events=False, disabled=True, key="M12", size=(20, 2), pad=((0, 25), (2, 2)),
+           tooltip="Longitude")]
                ]
 
-layout = [[sg.TabGroup([[sg.Tab("Tab 1", tab1_layout, tooltip="Graph"), sg.Tab("Tab 2", tab2_layout)]],
-                       )], [sg.Text("_"*80, pad=((0,0),(0,0)))],[sg.MLine("Fish", key="M5", size=(60,4))]]
+tab4_layout = [
+    [sg.Text("Wave Current - Latitude", pad=((5, 30), (2, 2)), justification="left"),
+     sg.In("{0:.4f} m/s".format(0),
+           enable_events=False, disabled=True, key="M7", size=(20, 2), pad=((10, 25), (0, 0)),
+           tooltip="Wave Current - Latitude")],
+
+    [sg.Text("Wave Current - Longitude", pad=((5, 30), (0, 0)), justification="left"),
+     sg.In("{0:.4f} m/s".format(0),
+           enable_events=False, disabled=True, key="M8", size=(20, 2), pad=((0, 25), (2, 2)),
+           tooltip="Wave Current - Longitude")],
+]
+
+layout = [[sg.TabGroup([[sg.Tab("Tab 1", tab1_layout, tooltip="Graph"), sg.Tab("Tab 2", tab2_layout, tooltip="Graph"),
+                         sg.Tab("Tab 3", tab3_layout), sg.Tab("Tab 4", tab4_layout, tooltip="Simulated Variables")]],
+                       )], [sg.Text("_"*80, pad=((0,0),(0,0)))],[sg.MLine("Initialized...\n", key="M5", size=(60,4))]]
 
 window = sg.Window("Location of the UUV", layout, grab_anywhere=True).Finalize()
+
+# Assigning names to GUI elements
 graph = window["graph"]
-thrusterline = window["M1"+sg.WRITE_ONLY_KEY]
+zoom_graph = window["zoom_graph"]
 
-graph.DrawLine((-100,0), (100,0))
-graph.DrawLine((0,-100), (0,100))
+# Calls graph_lines to draw axis
+graph_lines(graph, 1, 10, 3)
+graph_lines(zoom_graph, zoom_scale, 2, .5)
 
-for x in range(-100, 101, 20):
-    graph.DrawLine((x,-3), (x,3))
-    if x != 0:
-        graph.DrawText(x, (x,-10), color="green")
-
-for y in range(-100, 101, 20):
-    graph.DrawLine((-3,y), (3, y))
-    if y != 0:
-        graph.DrawText(y, (-10,y), color="blue")
-
+# Used to control UUV location on graph
 point_id = False
+point_id2 = False
+
+# Flag that tells the GUI to initialize a specific code once at startup
+is_initialized = False
+
 ###############################################
 ############## For Classes ONLY ###############
 
@@ -110,9 +175,10 @@ class Buoy:
 
 # Sets up a class responsible for controlling each individual thruster's speed
 class Thruster:
-    def __init__(self, name, speed):
+    def __init__(self, name, speed, state):
         self.name = name
         self.speed = speed
+        self.state = state
 
     def get_speed(self):
         return self.speed
@@ -122,6 +188,12 @@ class Thruster:
 
     def get_name(self):
         return self.name
+
+    def get_state(self):
+        return self.state
+
+    def set_state(self, state):
+        self.state = state
 
 
 ##############################################
@@ -171,10 +243,10 @@ is_orientating = False
 ################## Objects ###################
 
 # Sets up the four thrusters into instances: thrusters are all off.
-NORTH = Thruster("NORTH", NEUTRAL)
-SOUTH = Thruster("SOUTH", NEUTRAL)
-EAST = Thruster("EAST", NEUTRAL)
-WEST = Thruster("WEST", NEUTRAL)
+NORTH = Thruster("NORTH", NEUTRAL, "OFF")
+SOUTH = Thruster("SOUTH", NEUTRAL, "OFF")
+EAST = Thruster("EAST", NEUTRAL, "OFF")
+WEST = Thruster("WEST", NEUTRAL, "OFF")
 
 ##############################################
 ################## Arrays ####################
@@ -189,12 +261,6 @@ def random_change(step_value):
     # generates and returns a value between |100/step_value| with a step of 1/step_value
     return random.randrange(-100, 100, 1) / step_value
 
-
-'''def update_position():
-    adjusted_lat_speed = (long_scale * 10) - wave_lat_current
-    adjusted_long_speed = (lat_scale * 10) - wave_long_current
-    print(adjusted_lat_speed)
-    print(adjusted_long_speed)'''
 
 # Variables
 # Sets up the home location to 0, 0 -- corresponds to a XY coordinate system
@@ -218,7 +284,8 @@ UUV_long_speed = 0
 UUV_lat_speed = 0
 
 # Initializes the Buoy object
-UUV = Buoy(LAT, LONG, wave_lat_current, wave_long_current, ORIENT)
+# ORIENT - ORIENT else it'll append to orientation twice (second time is when orientation_update is called)
+UUV = Buoy(LAT, LONG, wave_lat_current, wave_long_current, ORIENT - ORIENT)
 
 ##############################################
 ########## Functions and Main Loop ###########
@@ -238,7 +305,7 @@ UUV = Buoy(LAT, LONG, wave_lat_current, wave_long_current, ORIENT)
 
 
 def gps_fix():
-    return print("Fix detected, continuing...\n")
+    return window["M5"].update("Fix detected, continuing...\n", append=True)
 
 
 # Remove for hardware integration
@@ -259,11 +326,11 @@ def orientation_update():
 def stop_thrusters(PINS):
     for PIN in PINS:
         PIN.set_speed(NEUTRAL)
+        PIN.set_state("OFF")
         if (PIN == NORTH) or (PIN == SOUTH):
             long_scale = 1
         if (PIN == EAST) or (PIN == WEST):
             lat_scale = 1
-        '''print("Stopping Thruster {}".format(PIN.get_name()))'''
     time.sleep(0.01)
 
 
@@ -271,15 +338,14 @@ def stop_thrusters(PINS):
 def run_thrusters(PINS, DUTYCYCLE):
     for PIN in PINS:
         PIN.set_speed(DUTYCYCLE)
-        '''print("Setting thruster {0} to {1}".format(PIN.get_name(), DUTYCYCLE))
-    print("")'''
+        PIN.set_state("ON")
     time.sleep(0.1)
 
 
 # Tolerance compares the magnitudes of the LONG/LAT values with a fixed value,
 # which corresponds to the +- 10ft specification
 def tolerance(coord):
-    tolerance = 2
+    tolerance = 1.5
 
     if abs(coord) > tolerance:
         return True
@@ -332,20 +398,21 @@ def rotateForwOrBack(PIN, angle):
     else:
         run_thrusters(PIN, -0.23)
 
-
+# Checks the sign of the current coordinate
 def coord_sign(coord):
     if coord >= 0:
         return 1
     else:
         return -1
 
-
-def main():
-    # Comment out/remove once simulated movement has been implemented
-    time_since_GPS_change = time.monotonic()
-
+# Sets up simulator parameters at startup
+def initialize():
+    global lat_sign_int, long_sign_int
     # Calls for GPS location
-    print("Waiting for a fix...\n")
+    window["M5"].update("Waiting for a fix...\n", append=True)
+    window["M7"].update("{0:.4f} m/s".format(wave_lat_current))
+    window["M8"].update("{0:.4f} m/s".format(wave_long_current))
+
     gps_fix()
 
     # Updates current position
@@ -365,14 +432,14 @@ def main():
     UUV.set_long_speed(wave_long_current)
     UUV.set_orientation(ORIENT)
 
+def main():
+    global adjustment_time, lat_adjustment, long_adjustment, lat_adjust_time, long_adjust_time
+    global lat_scale, long_scale, orientation_scale, long_sign_current, lat_sign_current, is_orientating
+    global long_time_since_adjustment, lat_time_since_adjustment
+    global point_id, point_id2, default_a, default_b, is_initialized
+
     # Main Loop
     while (1):
-        global adjustment_time, lat_adjustment, long_adjustment, lat_adjust_time, long_adjust_time
-        global lat_scale, long_scale, orientation_scale, long_sign_current, lat_sign_current, is_orientating
-        global long_time_since_adjustment, lat_time_since_adjustment
-        global point_id, a, b
-
-        last_runtime = time.monotonic()
 
         # GUI STARTS HERE
         event, values = window.read(timeout=20)
@@ -381,12 +448,35 @@ def main():
 
         if point_id != False:
             graph.DeleteFigure(point_id)
+        if point_id2 != False:
+            zoom_graph.DeleteFigure(point_id2)
+
+        window["M1"].update("{0} at {1:.2f}".format(NORTH.get_state(), NORTH.get_speed() * 10 + 150))
+        window["M2"].update("{0} at {1:.2f}".format(SOUTH.get_state(), SOUTH.get_speed() * 10 + 150))
+        window["M3"].update("{0} at {1:.2f}".format(WEST.get_state(), WEST.get_speed() * 10 + 150))
+        window["M4"].update("{0} at {1:.2f}".format(EAST.get_state(), EAST.get_speed() * 10 + 150))
+        window["M6"].update("{0:.2f}°".format(UUV.get_orientation()))
+        window["M9"].update("{0:.2f} m/s".format(UUV.get_lat_speed()))
+        window["M10"].update("{0:.2f} m/s".format(UUV.get_long_speed()))
+        window["M11"].update("{0:.2f}°".format(UUV.get_lat_coord()))
+        window["M12"].update("{0:.2f}°".format(UUV.get_long_coord()))
 
         point_id = graph.DrawPoint((UUV.get_lat_coord(), UUV.get_long_coord()), size=5, color="black")
+        point_id2 = zoom_graph.DrawPoint((UUV.get_lat_coord(), UUV.get_long_coord()), size=.5, color="black")
 
+        zoom_graph.DrawCircle((0,0), 3)
+
+        if not is_initialized:
+            is_initialized = True
+            initialize()
+
+            window.Read(timeout=1000)
         # GUI ENDS HERE
 
+        last_runtime = time.monotonic()
+
         try:
+
             current_time = time.monotonic()
 
             # UCompare coordinates
@@ -394,14 +484,17 @@ def main():
             lat_sign_current = coord_sign(UUV.get_lat_coord())
 
             # Delay update for a maximum of 0.1s
-            time.sleep(0.2 - (current_time - last_runtime))
+            time.sleep(0.1 - (current_time - last_runtime))
             wait = time.monotonic() - last_runtime
 
             # set current speed and location of UUV
-            UUV.set_long_speed(NORTH.get_speed() - wave_long_current)
-            UUV.set_lat_speed(WEST.get_speed() - wave_lat_current)
+            UUV.set_long_speed(NORTH.get_speed() + wave_long_current)
+            UUV.set_lat_speed(WEST.get_speed() + wave_lat_current)
             UUV.set_long_coord(UUV.get_long_speed() * wait)
             UUV.set_lat_coord(UUV.get_lat_speed() * wait)
+
+            # Refreshes the GUI for user input, wait time of 20ms
+            window.Read(timeout=20)
 
             # set new orientation of UUV:
             # w = v / r: v is in m/s, r = 5 cm so 0.05m
@@ -410,13 +503,12 @@ def main():
                 # angle change = omega * change in time:
                 changeAngle = omega * wait
                 UUV.set_orientation(changeAngle)
+                window["M5"].update("Currently orientating...\nCurrent orientation at: {0:.2f}°"
+                                    .format(UUV.get_orientation()))
 
             print("{0:14s}{1:>5f}\n{2:14s}{3:>5f}\n{4:14s}{5:>5f}\n".format("Lat Post:", UUV.get_lat_coord(),
                                                                             "Long Post:", UUV.get_long_coord(),
                                                                             "Orientation:", UUV.get_orientation()))
-
-            '''print("{0:12s}{1:>5f}\n{2:12s}{3:>5f}\n".format("Long Speed:", UUV.get_long_speed(),
-                                                          "Lat Speed:", UUV.get_lat_speed()))'''
 
             last_runtime = current_time
 
@@ -428,10 +520,19 @@ def main():
 
             # only if orientation is correct, then perform other actions.
             else:
+                global long_sign_int, lat_sign_int
+
+                # Refreshes the GUI for user input, wait time of 20ms
+                window.Read(timeout=20)
+
                 # stop the north thruster as orientation is correct.
                 is_orientating = False
                 if NORTH.get_speed() in (-0.23, 0.23):
                     stop_thrusters([NORTH])
+
+                # Outputs where the UUV is exactly
+                window["M5"].update("Current direction is...\nLatitude: {0:.4f}°\nLongitude: {1:.4f}°"
+                                    .format(UUV.get_lat_coord(), UUV.get_long_coord()))
 
                 # Responsible for LONG
                 # Currently barebones
@@ -463,6 +564,9 @@ def main():
                         long_scale -= 2
                     long_time_since_adjustment = 0
 
+                # Refreshes the GUI for user input, wait time of 20ms
+                window.Read(timeout=20)
+
                 # Responsible for LAT
                 # Currently barebones
                 if tolerance(UUV.get_lat_coord()):
@@ -492,6 +596,9 @@ def main():
                     else:
                         lat_scale -= 2
                     lat_time_since_adjustment = 0
+
+                # Refreshes the GUI for user input, wait time of 20ms
+                window.Read(timeout=20)
 
         except KeyboardInterrupt:
             # Press CTRL+C to activate. Updates GPS position
