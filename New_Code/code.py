@@ -10,11 +10,58 @@ LONGTITUDE:
 0 = x +- current_speed * time
 '''
 
+import PySimpleGUI as sg
 import math
-import time
 import random
+import time
 
+###############################################
+################## GUI ONLY ###################
+a = "ON"
+b = "1500us"
 
+tab1_layout = [[sg.Graph(canvas_size=(400,400), graph_bottom_left=(-105,-105), graph_top_right=(105,105),
+                    background_color="white", key="graph", tooltip="This is represents where the UUV is"
+                                                                   " relative to its home position (0,0)")]]
+tab2_layout = [
+    [sg.Text("Thruster North", pad=((5,30), (2,2)), justification="left"), sg.In("{} at {}".format(a, b),
+        enable_events=False, disabled=True, key="M1"+sg.WRITE_ONLY_KEY, size=(20,2),pad=((3,25), (0,0)),
+        tooltip="This shows the states of the thrusters")],
+
+    [sg.Text("Thruster South", pad=((5,30), (0,0)), justification="left"), sg.In("{} at {}".format(a, b),
+        enable_events=False, disabled=True, key="M2"+sg.WRITE_ONLY_KEY, size=(20,2),pad=((0,25), (2,2)),
+        tooltip="This shows the states of the thrusters")],
+
+    [sg.Text("Thruster West", pad=((5,30), (0,0)), justification="left"), sg.In("{} at {}".format(a, b),
+        enable_events=False, disabled=True, key="M3"+sg.WRITE_ONLY_KEY, size=(20,2),pad=((3,25), (2,2)),
+        tooltip="This shows the states of the thrusters")],
+
+    [sg.Text("Thruster East", pad=((5,30), (0,0)), justification="left"), sg.In("{} at {}".format(a, b),
+        enable_events=False, disabled=True, key="M4"+sg.WRITE_ONLY_KEY, size=(20,2),pad=((7,25), (2,2)),
+        tooltip="This shows the states of the thrusters")]
+               ]
+
+layout = [[sg.TabGroup([[sg.Tab("Tab 1", tab1_layout, tooltip="Graph"), sg.Tab("Tab 2", tab2_layout)]],
+                       )], [sg.Text("_"*80, pad=((0,0),(0,0)))],[sg.MLine("Fish", key="M5", size=(60,4))]]
+
+window = sg.Window("Location of the UUV", layout, grab_anywhere=True).Finalize()
+graph = window["graph"]
+thrusterline = window["M1"+sg.WRITE_ONLY_KEY]
+
+graph.DrawLine((-100,0), (100,0))
+graph.DrawLine((0,-100), (0,100))
+
+for x in range(-100, 101, 20):
+    graph.DrawLine((x,-3), (x,3))
+    if x != 0:
+        graph.DrawText(x, (x,-10), color="green")
+
+for y in range(-100, 101, 20):
+    graph.DrawLine((-3,y), (3, y))
+    if y != 0:
+        graph.DrawText(y, (-10,y), color="blue")
+
+point_id = False
 ###############################################
 ############## For Classes ONLY ###############
 
@@ -323,8 +370,22 @@ def main():
         global adjustment_time, lat_adjustment, long_adjustment, lat_adjust_time, long_adjust_time
         global lat_scale, long_scale, orientation_scale, long_sign_current, lat_sign_current, is_orientating
         global long_time_since_adjustment, lat_time_since_adjustment
+        global point_id, a, b
 
         last_runtime = time.monotonic()
+
+        # GUI STARTS HERE
+        event, values = window.read(timeout=20)
+        if event in (None, "Exit"):
+            break
+
+        if point_id != False:
+            graph.DeleteFigure(point_id)
+
+        point_id = graph.DrawPoint((UUV.get_lat_coord(), UUV.get_long_coord()), size=5, color="black")
+
+        # GUI ENDS HERE
+
         try:
             current_time = time.monotonic()
 
