@@ -257,12 +257,29 @@ def adjust_speed(PINS, t, scale, coord, speed):
     else:
         return [t, scale, adjustment]
 
-#for thruster to orient the UUV, plug return value into adjust speeds to adjust north thruster speed to 0.23 (about 5 degree/iteration) 
+#for thruster to orient the UUV, active the north thruster to cause the UUV to rotate. 
+#To be in correct orientation, orientation = 90 degrees: which means that vehicle is facing north. 
+#If in quadrant I or IV, north thruster will spin forward and rotate counterclockwise. Opposite applies to II and III
+#Three speed levels: more than 90 degrees away(speed = 2), more than 15 degrees away (speed = 0.75), less than 15 (speed = 0.23)
 def rotateForwOrBack(PIN, angle): 
-	if angle < 90 or angle > 270:
-		run_thrusters(PIN, 0.23)
-	else:
-		run_thrusters(PIN, -0.23)
+	#quadrant I
+	if angle < 90:
+		if angle >= 75:
+			run_thrusters(PIN, 0.23)
+		else: 
+			run_thrusters(PIN, 0.75)
+    #quadrant IV
+	elif angle > 270:
+		run_thrusters(PIN, 2)
+	#quadrant II
+	elif angle > 90 and angle <= 180:
+		if (angle - 90) <= 15:
+			run_thrusters(PIN, -0.23)
+		else: 
+			run_thrusters(PIN, -0.75)
+    #quadrant III
+	elif angle > 180 and angle <= 270:
+		run_thrusters(PIN, -2)
 
 def coord_sign(coord):
     if coord >= 0:
@@ -319,7 +336,7 @@ def main():
             UUV.set_lat_coord(UUV.get_lat_speed() * wait)
 
             #set new orientation of UUV:
-            # w = v / r: v is in m/s, r = 5 cm so 0.05m 
+            # w = v / r: v is in m/s, radius = 5 cm so 0.05m 
             omega = NORTH.get_speed() / 0.05 
             # angle change = omega * change in time:
             changeAngle = omega * wait
