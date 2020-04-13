@@ -490,8 +490,11 @@ def main():
             long_sign_current = coord_sign(UUV.get_long_coord())
             lat_sign_current = coord_sign(UUV.get_lat_coord())
 
-            # Delay update for a maximum of 0.01s
-            time.sleep(0.01 - (current_time - last_runtime))
+            # Delay update for a maximum of 0.05s
+            if current_time - last_runtime > 0.05:
+                time.sleep(0.05)
+            else:
+                time.sleep(0.05 - (current_time - last_runtime))
             wait = time.monotonic() - last_runtime
 
             # set current speed and location of UUV
