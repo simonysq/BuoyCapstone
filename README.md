@@ -1,2 +1,2 @@
 # BuoyCapstone
-Capstone project code for buoy. 
+This is a senior design project developed for the Applied Research Labratory at Penn State. The project involves designing a Unmanned Underwater Vehicle (UUV) suspended from a buoy device that has the capabilites of navigating to its designated location. Due to COVID-19, the team was unable to transfer the code to the Raspberry Pi and perform testing on the hardware. Therefore, a python GUI was developed to simulate the UUV navigating to its destination. 
